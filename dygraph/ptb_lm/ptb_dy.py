@@ -42,13 +42,12 @@ if sys.version[0] == '2':
 
 class SimpleLSTMRNN(fluid.Layer):
     def __init__(self,
-                 name_scope,
                  hidden_size,
                  num_steps,
                  num_layers=2,
                  init_scale=0.1,
                  dropout=None):
-        super(SimpleLSTMRNN, self).__init__(name_scope)
+        super(SimpleLSTMRNN, self).__init__()
         self._hidden_size = hidden_size
         self._num_layers = num_layers
         self._init_scale = init_scale
@@ -132,14 +131,13 @@ class SimpleLSTMRNN(fluid.Layer):
 
 class PtbModel(fluid.Layer):
     def __init__(self,
-                 name_scope,
                  hidden_size,
                  vocab_size,
                  num_layers=2,
                  num_steps=20,
                  init_scale=0.1,
                  dropout=None):
-        super(PtbModel, self).__init__(name_scope)
+        super(PtbModel, self).__init__()
         self.hidden_size = hidden_size
         self.vocab_size = vocab_size
         self.init_scale = init_scale
@@ -147,14 +145,12 @@ class PtbModel(fluid.Layer):
         self.num_steps = num_steps
         self.dropout = dropout
         self.simple_lstm_rnn = SimpleLSTMRNN(
-            self.full_name(),
             hidden_size,
             num_steps,
             num_layers=num_layers,
             init_scale=init_scale,
             dropout=dropout)
         self.embedding = Embedding(
-            self.full_name(),
             size=[vocab_size, hidden_size],
             dtype='float32',
             is_sparse=False,
@@ -286,7 +282,6 @@ def train_ptb_lm():
             fluid.default_main_program().random_seed = seed
             max_epoch = 1
         ptb_model = PtbModel(
-            "ptb_model",
             hidden_size=hidden_size,
             vocab_size=vocab_size,
             num_layers=num_layers,
@@ -328,7 +323,7 @@ def train_ptb_lm():
             lr_arr.append(new_lr)
 
         sgd = SGDOptimizer(learning_rate=fluid.layers.piecewise_decay(
-            boundaries=bd, values=lr_arr))
+            boundaries=bd, values=lr_arr), parameter_list=ptb_model.parameters())
 
         def eval(model, data):
             print("begion to eval")
@@ -343,8 +338,8 @@ def train_ptb_lm():
             train_data_iter = reader.get_data_iter(data, batch_size, num_steps)
             for batch_id, batch in enumerate(train_data_iter):
                 x_data, y_data = batch
-                x_data = x_data.reshape((-1, num_steps))
-                y_data = y_data.reshape((-1, 1))
+                x_data = x_data.reshape((-1, num_steps, 1))
+                y_data = y_data.reshape((-1, num_steps, 1))
                 x = to_variable(x_data)
                 y = to_variable(y_data)
                 init_hidden = to_variable(init_hidden_data)
